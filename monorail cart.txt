@@ -1,0 +1,203 @@
+public Program()
+{
+    Runtime.UpdateFrequency = UpdateFrequency.Update10;
+}
+
+string itemName = "Monorail #00";
+float speed = 5f;
+
+public void Main(string argument, UpdateType updateSource)
+{
+	//check mode of behavior
+	IMyTimerBlock timer_stop = (IMyTimerBlock)GridTerminalSystem.GetBlockWithName(itemName+" Timer Block Stop");
+	IMyTimerBlock timer_forward = (IMyTimerBlock)GridTerminalSystem.GetBlockWithName(itemName+" Timer Block Forward");
+	IMyTimerBlock timer_backward = (IMyTimerBlock)GridTerminalSystem.GetBlockWithName(itemName+" Timer Block Backward");
+	List<IMyTerminalBlock> piston_list = new List<IMyTerminalBlock>();
+	GridTerminalSystem.GetBlockGroupWithName(itemName+" Piston Set").GetBlocksOfType<IMyPistonBase>(piston_list);
+	List<IMyTerminalBlock> gear_list_a = new List<IMyTerminalBlock>();
+	GridTerminalSystem.GetBlockGroupWithName(itemName+" Landing Gear Set A").GetBlocksOfType<IMyLandingGear>(gear_list_a);
+	List<IMyTerminalBlock> gear_list_b = new List<IMyTerminalBlock>();
+	GridTerminalSystem.GetBlockGroupWithName(itemName+" Landing Gear Set B").GetBlocksOfType<IMyLandingGear>(gear_list_b);
+	if(argument=="Stop"||argument=="Forward"||argument=="Backward"){
+		for(int i = 0; i < piston_list.Count; i++) {
+			IMyPistonBase piston = (IMyPistonBase)piston_list[i];
+			piston.Velocity = (float)0;
+		}
+		for(int i = 0; i < gear_list_a.Count; i++) {
+			IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+			gear.ApplyAction("Lock");
+		}
+		for(int i = 0; i < gear_list_b.Count; i++) {
+			IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+			gear.ApplyAction("Lock");
+		}
+	}
+	if(argument=="Stop"){
+		timer_stop.ApplyAction("OnOff_On");
+		timer_forward.ApplyAction("OnOff_Off");
+		timer_backward.ApplyAction("OnOff_Off");
+	}
+	else if(argument=="Forward"){
+		timer_stop.ApplyAction("OnOff_Off");
+		timer_forward.ApplyAction("OnOff_On");
+		timer_backward.ApplyAction("OnOff_Off");
+	}
+	else if(argument=="Backward"){
+		timer_stop.ApplyAction("OnOff_Off");
+		timer_forward.ApplyAction("OnOff_Off");
+		timer_backward.ApplyAction("OnOff_On");
+	}
+	//movement actions
+	else{
+		if(timer_stop.Enabled==true){
+			for(int i = 0; i < piston_list.Count; i++) {
+				IMyPistonBase piston = (IMyPistonBase)piston_list[i];
+				piston.Velocity = (float)0;
+			}
+			for(int i = 0; i < gear_list_a.Count; i++) {
+				IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+				gear.ApplyAction("Lock");
+			}
+			for(int i = 0; i < gear_list_b.Count; i++) {
+				IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+				gear.ApplyAction("Lock");
+			}
+		}
+		else if(timer_forward.Enabled==true||timer_backward.Enabled==true){
+			//check where we are
+			int extended = 1;	//check if pistons fully extended (all)
+			int retracted = 1;	//likewise
+			int locked = 1;		//check if gears are locked and we are stopped (all)
+			for(int i = 0; i < piston_list.Count; i++) {
+				IMyPistonBase piston = (IMyPistonBase)piston_list[i];
+				if((float)piston.HighestPosition!=(float)piston.CurrentPosition){
+					extended *=0;
+				}
+				if((float)piston.LowestPosition!=(float)piston.CurrentPosition){
+					retracted *=0;
+				}
+				//get us moving if we are stopped
+				if((float)piston.Velocity==0){
+					piston.Velocity = speed;
+				}
+			}
+			for(int i = 0; i < gear_list_a.Count; i++) {
+				IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+				if(gear.IsLocked==false){
+					locked*=0;
+				}
+			}
+			for(int i = 0; i < gear_list_b.Count; i++) {
+				IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+				if(gear.IsLocked==false){
+					locked*=0;
+				}
+			}
+			//apply actions
+			if(locked==1){
+				if(timer_forward.Enabled==true){
+					for(int i = 0; i < gear_list_a.Count; i++) {
+						IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+						gear.ApplyAction("Unlock");
+					}
+				}
+				else{
+					for(int i = 0; i < gear_list_b.Count; i++) {
+						IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+						gear.ApplyAction("Unlock");
+					}
+				}
+			}
+			else{
+				if(extended==1){
+					for(int i = 0; i < piston_list.Count; i++) {
+						IMyPistonBase piston = (IMyPistonBase)piston_list[i];
+						piston.Velocity = -speed;
+					}
+					if(timer_forward.Enabled==true){
+						for(int i = 0; i < gear_list_a.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+							if(gear.IsLocked!=true){
+								gear.ApplyAction("Lock");
+							}
+						}
+						for(int i = 0; i < gear_list_b.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+							if(gear.IsLocked!=false){
+								gear.ApplyAction("Unlock");
+							}
+						}
+					}
+					else if(timer_backward.Enabled==true){
+						for(int i = 0; i < gear_list_a.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+							if(gear.IsLocked!=false){
+								gear.ApplyAction("Unlock");
+							}
+						}
+						for(int i = 0; i < gear_list_b.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+							if(gear.IsLocked!=true){
+								gear.ApplyAction("Lock");
+							}
+						}
+					}
+				}
+				else if(retracted==1){
+					for(int i = 0; i < piston_list.Count; i++) {
+						IMyPistonBase piston = (IMyPistonBase)piston_list[i];
+						piston.Velocity = speed;
+					}
+					if(timer_forward.Enabled==true){
+						for(int i = 0; i < gear_list_a.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+							if(gear.IsLocked!=false){
+								gear.ApplyAction("Unlock");
+							}
+						}
+						for(int i = 0; i < gear_list_b.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+							if(gear.IsLocked!=true){
+								gear.ApplyAction("Lock");
+							}
+						}
+					}
+					else if(timer_backward.Enabled==true){
+						for(int i = 0; i < gear_list_a.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_a[i];
+							if(gear.IsLocked!=true){
+								gear.ApplyAction("Lock");
+							}
+						}
+						for(int i = 0; i < gear_list_b.Count; i++) {
+							IMyLandingGear gear = (IMyLandingGear)gear_list_b[i];
+							if(gear.IsLocked!=false){
+								gear.ApplyAction("Unlock");
+							}
+						}
+					}
+				}
+				else{
+					//debug of pistons (they stop sometimes for some reason but changing speed fixes it)
+					Random rnd = new Random();
+					float rand = ((float)rnd.Next(95,105)/100f)*speed;
+					for(int i = 0; i < piston_list.Count; i++) {
+						IMyPistonBase piston = (IMyPistonBase)piston_list[i];
+						if(piston.Velocity>0){
+							piston.Velocity = rand;
+						}
+						else if(piston.Velocity<0){
+							piston.Velocity = -rand;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+todo: 
+1. needs to check if attached before changing velocity on pistons
+2. changing speed
